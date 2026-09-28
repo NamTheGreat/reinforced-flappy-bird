@@ -194,3 +194,71 @@ class PERBuffer:
         idxs_arr = np.asarray(idxs, dtype=np.int64)
         td_arr = np.asarray(td_errors, dtype=np.float64)
         self.tree.update(idxs_arr, td_arr)
+
+
+from collections import deque
+from typing import NamedTuple, List
+
+
+class StepTransition(NamedTuple):
+    s: np.ndarray
+    a: int
+    r: float
+    s2: np.ndarray
+    d: bool
+
+
+class NStepCollector:
+    r"""Accumulates multi-step transitions for n-step return bootstrapping.
+
+    Given horizon n >= 1 and discount factor gamma:
+        R_t^{(n)} = \sum_{k=0}^{m-1} \gamma^k r_{t+k}
+    where m = min(n, steps_to_terminal).
+    The resulting transition is (s_t, a_t, R_t^{(n)}, s_{t+m}, done_{t+m}).
+    """
+
+    def __init__(self, n_step: int = 1, gamma: float = 0.99):
+        self.n_step = n_step
+        self.gamma = gamma
+        self.queue: deque = deque()
+
+    def add(
+        self, s: np.ndarray, a: int, r: float, s2: np.ndarray, d: bool
+    ) -> List[Tuple[np.ndarray, int, float, np.ndarray, bool]]:
+        """Add a 1-step transition and yield ready n-step transitions."""
+        if self.n_step <= 1:
+            return [(s, a, float(r), s2, bool(d))]
+
+        self.queue.append(StepTransition(s, a, float(r), s2, bool(d)))
+        ready = []
+
+        if len(self.queue) >= self.n_step:
+            ready.append(self._pop_transition())
+
+        if d:
+            while self.queue:
+                ready.append(self._pop_transition())
+
+        return ready
+
+    def _pop_transition(self) -> Tuple[np.ndarray, int, float, np.ndarray, bool]:
+        s0 = self.queue[0].s
+        a0 = self.queue[0].a
+        ret = 0.0
+        done = False
+        s_next = self.queue[-1].s2
+
+        for i, trans in enumerate(self.queue):
+            ret += (self.gamma ** i) * trans.r
+            if trans.d:
+                done = True
+                s_next = trans.s2
+                break
+
+        self.queue.popleft()
+        return (s0, a0, float(ret), s_next, done)
+
+    def reset(self) -> None:
+        """Clear collector state on episode interruption."""
+        self.queue.clear()
+

@@ -11,7 +11,7 @@ import torch
 from flappy_rl.config import DQNConfig
 from flappy_rl.env import make_env
 from flappy_rl.agent import DQNAgent
-from flappy_rl.buffers import UniformBuffer, PERBuffer
+from flappy_rl.buffers import UniformBuffer, PERBuffer, NStepCollector
 from flappy_rl.evaluate import run_episodes
 from flappy_rl.utils import set_seed
 
@@ -31,7 +31,20 @@ def train(cfg: DQNConfig, log_dir: str = "results/runs", models_dir: str = "mode
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(models_dir, exist_ok=True)
 
-    method_name = f"DQN_{'Double_' if cfg.double else ''}{cfg.buffer_type.upper()}"
+    variant_parts = ["DQN"]
+    if cfg.dueling:
+        variant_parts.append("Dueling")
+    if cfg.double:
+        variant_parts.append("Double")
+    variant_parts.append(cfg.buffer_type.upper())
+    if cfg.n_step > 1:
+        variant_parts.append(f"{cfg.n_step}Step")
+    if cfg.tau < 1.0:
+        variant_parts.append(f"Tau{cfg.tau}")
+    if cfg.reward_shaping:
+        variant_parts.append("Shaped")
+
+    method_name = "_".join(variant_parts)
     run_id = f"{method_name}_seed_{cfg.seed}_{int(time.time())}"
 
     # Log files
@@ -52,9 +65,19 @@ def train(cfg: DQNConfig, log_dir: str = "results/runs", models_dir: str = "mode
             "std_score", "median_score", "max_score", "success_rate", "wall_time"
         ])
 
-    # Environments
-    env = make_env(seed=cfg.seed, max_episode_steps=cfg.max_episode_steps)
-    eval_env = make_env(seed=cfg.seed + 1000, max_episode_steps=cfg.max_episode_steps)
+    # Environments (training env may have reward shaping; eval env is always raw environment)
+    env = make_env(
+        seed=cfg.seed,
+        max_episode_steps=cfg.max_episode_steps,
+        reward_shaping=cfg.reward_shaping,
+        shaping_scale=cfg.shaping_scale,
+        gamma=cfg.gamma,
+    )
+    eval_env = make_env(
+        seed=cfg.seed + 1000,
+        max_episode_steps=cfg.max_episode_steps,
+        reward_shaping=False,
+    )
 
     # Agent
     agent = DQNAgent(
@@ -64,8 +87,13 @@ def train(cfg: DQNConfig, log_dir: str = "results/runs", models_dir: str = "mode
         lr=cfg.lr,
         gamma=cfg.gamma,
         double=cfg.double,
+        dueling=cfg.dueling,
         grad_clip=cfg.grad_clip,
     )
+
+    # Multi-step transition collector
+    n_step_collector = NStepCollector(n_step=cfg.n_step, gamma=cfg.gamma)
+    effective_gamma = cfg.gamma ** cfg.n_step
 
     # Buffer
     if cfg.buffer_type.lower() == "per":
@@ -94,8 +122,10 @@ def train(cfg: DQNConfig, log_dir: str = "results/runs", models_dir: str = "mode
         done = term or trunc
         ep_reward += float(reward)
 
-        # Store transition
-        buffer.push(obs, action, reward, next_obs, done)
+        # Store transitions via n-step collector
+        transitions = n_step_collector.add(obs, action, reward, next_obs, done)
+        for s_t, a_t, r_t, s2_t, d_t in transitions:
+            buffer.push(s_t, a_t, r_t, s2_t, d_t)
         obs = next_obs
 
         # Learn
@@ -117,7 +147,9 @@ def train(cfg: DQNConfig, log_dir: str = "results/runs", models_dir: str = "mode
                 d_t = torch.as_tensor(d, dtype=torch.float32)
                 ws_t = torch.as_tensor(ws, dtype=torch.float32).unsqueeze(1)
 
-                loss_val, td_errors = agent.learn(s_t, a_t, r_t, s2_t, d_t, weights=ws_t)
+                loss_val, td_errors = agent.learn(
+                    s_t, a_t, r_t, s2_t, d_t, weights=ws_t, gamma=effective_gamma
+                )
                 buffer.update(idxs, td_errors.abs().cpu().numpy().ravel())
             else:
                 s, a, r, s2, d = buffer.sample(cfg.batch_size)
@@ -127,13 +159,19 @@ def train(cfg: DQNConfig, log_dir: str = "results/runs", models_dir: str = "mode
                 s2_t = torch.as_tensor(s2, dtype=torch.float32)
                 d_t = torch.as_tensor(d, dtype=torch.float32)
 
-                loss_val, _ = agent.learn(s_t, a_t, r_t, s2_t, d_t, weights=None)
+                loss_val, _ = agent.learn(
+                    s_t, a_t, r_t, s2_t, d_t, weights=None, gamma=effective_gamma
+                )
 
             recent_losses.append(loss_val)
 
-        # Target network sync
-        if global_step % cfg.target_update_interval == 0:
-            agent.sync_target()
+            # Soft target updates (Polyak) occur every training step
+            if cfg.tau < 1.0:
+                agent.sync_target(tau=cfg.tau)
+
+        # Hard target network sync (when tau == 1.0)
+        if cfg.tau >= 1.0 and global_step % cfg.target_update_interval == 0:
+            agent.sync_target(tau=1.0)
 
         # Episode end
         if done:
@@ -195,6 +233,12 @@ def parse_args() -> DQNConfig:
     parser = argparse.ArgumentParser(description="Train Flappy Bird DQN Agent")
     parser.add_argument("--buffer", type=str, choices=["uniform", "per"], default="uniform", help="Buffer type")
     parser.add_argument("--double", action="store_true", help="Enable Double DQN")
+    parser.add_argument("--dueling", action="store_true", help="Enable Dueling Q-Network architecture")
+    parser.add_argument("--tau", type=float, default=1.0, help="Polyak soft update factor (<1.0 for soft updates)")
+    parser.add_argument("--n-step", type=int, default=1, help="N-step return horizon (default: 1)")
+    parser.add_argument("--reward-shaping", action="store_true", help="Enable potential-based gap alignment shaping")
+    parser.add_argument("--shaping-scale", type=float, default=0.05, help="Reward shaping scale factor")
+    parser.add_argument("--hidden-dim", type=int, default=128, help="Hidden dimension for MLP")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     parser.add_argument("--timesteps", type=int, default=200000, help="Total training steps")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
@@ -202,12 +246,18 @@ def parse_args() -> DQNConfig:
     parser.add_argument("--eval-freq", type=int, default=5000, help="Evaluation interval")
     parser.add_argument("--eval-episodes", type=int, default=20, help="Number of evaluation episodes")
     parser.add_argument("--warmup", type=int, default=2000, help="Warmup steps")
-    parser.add_argument("--target-interval", type=int, default=1000, help="Target sync interval")
+    parser.add_argument("--target-interval", type=int, default=1000, help="Target sync interval (used when tau=1.0)")
     args = parser.parse_args()
 
     return DQNConfig(
         buffer_type=args.buffer,
         double=args.double,
+        dueling=args.dueling,
+        tau=args.tau,
+        n_step=args.n_step,
+        reward_shaping=args.reward_shaping,
+        shaping_scale=args.shaping_scale,
+        hidden_dim=args.hidden_dim,
         seed=args.seed,
         total_timesteps=args.timesteps,
         lr=args.lr,

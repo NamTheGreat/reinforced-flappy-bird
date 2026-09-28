@@ -140,6 +140,7 @@ def main():
     parser.add_argument("--heuristic", action="store_true", help="Evaluate HeuristicAgent")
     parser.add_argument("--random", action="store_true", help="Evaluate RandomAgent")
     parser.add_argument("--double", action="store_true", help="If loading Double DQN model")
+    parser.add_argument("--dueling", action="store_true", help="If loading Dueling DQN model")
     parser.add_argument("--episodes", type=int, default=100, help="Number of evaluation episodes")
     parser.add_argument("--record", type=str, default=None, help="Save gameplay GIF to specified path")
     parser.add_argument("--record-steps", type=int, default=1500, help="Maximum steps for GIF recording")
@@ -153,7 +154,7 @@ def main():
         agent = RandomAgent()
         name = "RandomAgent"
     elif args.checkpoint:
-        agent = DQNAgent(double=args.double)
+        agent = DQNAgent(double=args.double, dueling=args.dueling)
         agent.load(args.checkpoint)
         name = f"DQN ({args.checkpoint})"
     else:

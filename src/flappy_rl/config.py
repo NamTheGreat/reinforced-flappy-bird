@@ -9,9 +9,12 @@ class DQNConfig:
     max_episode_steps: int = 5000
     obs_dim: int = 12
     n_actions: int = 2
+    reward_shaping: bool = False
+    shaping_scale: float = 0.05
 
     # Architecture
     hidden_dim: int = 128
+    dueling: bool = False
 
     # Optimization
     lr: float = 1e-3
@@ -19,12 +22,16 @@ class DQNConfig:
     batch_size: int = 64
     grad_clip: float = 10.0
 
-    # Replay buffer
+    # Target Network Synchronization
+    tau: float = 1.0  # 1.0 = hard update every target_update_interval; < 1.0 = soft update each step
+    target_update_interval: int = 1000  # used when tau == 1.0
+
+    # Replay buffer & Multi-step returns
     buffer_type: str = "uniform"  # "uniform" or "per"
     buffer_capacity: int = 65536  # 2^16
     warmup_steps: int = 2000
     train_freq: int = 1
-    target_update_interval: int = 1000  # hard update every N steps
+    n_step: int = 1  # 1 = standard 1-step Bellman; > 1 = n-step return bootstrapping
 
     # Exploration (step-based epsilon decay)
     eps_start: float = 1.0
