@@ -33,7 +33,7 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-Reinforcement Learning (RL) agents often suffer from sample inefficiency and training instability when learning control policies in sparse-reward, delayed-consequence environments. In this paper, we develop a Deep Q-Network (DQN) agent capable of mastering the classic arcade game \textit{Flappy Bird} purely from raw scalar rewards. To address experience correlation and sample inefficiency, we integrate Prioritized Experience Replay (PER), prioritizing transitions exhibiting high Temporal Difference (TD) errors. Recognizing the severe interpreter bottleneck of maintaining binary sum-trees in pure Python, we implement the core sum-tree in native Rust using PyO3 and Maturin bindings. Our native Rust sum-tree achieves a \textbf{30.05$\times$ speedup in stratified sampling} (197,870 samples/sec vs.\ 6,585 samples/sec) and a \textbf{117.28$\times$ speedup in priority updates} (1,317,886 updates/sec vs.\ 11,237 updates/sec) compared to an equivalent pure-Python implementation. In empirical evaluations across 100 benchmark episodes, our baseline heuristic policy cleared an average of $69.28 \pm 43.74$ pipes (84.0\% success rate), while an untrained random agent failed immediately with $0.00$ pipes. Our results demonstrate how low-level systems programming languages can eliminate computational overheads in modern reinforcement learning pipelines.
+Reinforcement Learning (RL) agents often suffer from sample inefficiency and training instability when learning control policies in sparse-reward, delayed-consequence environments. In this paper, we develop a Deep Q-Network (DQN) agent capable of mastering the classic arcade game \textit{Flappy Bird} purely from raw scalar rewards. To address experience correlation and sample inefficiency, we integrate Prioritized Experience Replay (PER), prioritizing transitions exhibiting high Temporal Difference (TD) errors. Recognizing the severe interpreter bottleneck of maintaining binary sum-trees in pure Python, we implement the core sum-tree in native Rust using PyO3 and Maturin bindings. Our native Rust sum-tree achieves a \textbf{49.04$\times$ speedup in stratified sampling} (109,955 samples/sec vs.\ 2,242 samples/sec) and a \textbf{105.93$\times$ speedup in priority updates} (402,763 updates/sec vs.\ 3,802 updates/sec) compared to an equivalent pure-Python implementation. In empirical evaluations across 100 benchmark episodes, our baseline heuristic policy cleared an average of $69.28 \pm 43.74$ pipes (84.0\% success rate), while an untrained random agent failed immediately with $0.00$ pipes. Our results demonstrate how low-level systems programming languages can eliminate computational overheads in modern reinforcement learning pipelines.
 \end{abstract}
 
 \vspace{0.5em}
@@ -129,6 +129,13 @@ DQN + Rust PER & 3 & 42.62 $\pm$ 45.89 & 132 & 46.7\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{eval_score_curve.png}
+\caption{Evaluation score trajectory across 200,000 environment steps for Uniform Replay, Rust PER, and Double DQN with Rust PER (shaded error bands represent $\pm 1$ standard deviation across 3 independent random seeds).}
+\label{fig:eval_curve}
+\end{figure}
 
 \subsection{Buffer Microbenchmark Throughput}
 We benchmarked sampling and update throughput across three distinct implementations with capacity $N = 65,536$ and batch size $B = 64$ on the Azure cloud virtual machine.

@@ -9,7 +9,7 @@
 ---
 
 ## Abstract
-Reinforcement Learning (RL) agents often suffer from sample inefficiency and training instability when learning control policies in sparse-reward, delayed-consequence environments. In this paper, we develop a Deep Q-Network (DQN) agent capable of mastering the classic arcade game *Flappy Bird* purely from raw scalar rewards. To address experience correlation and sample inefficiency, we integrate Prioritized Experience Replay (PER), prioritizing transitions exhibiting high Temporal Difference (TD) errors. Recognizing the severe interpreter bottleneck of maintaining binary sum-trees in pure Python, we implement the core sum-tree in native Rust using PyO3 and Maturin bindings. Our native Rust sum-tree achieves a **30.05× speedup in stratified sampling** (197,870 samples/sec vs. 6,585 samples/sec) and a **117.28× speedup in priority updates** (1,317,886 updates/sec vs. 11,237 updates/sec) compared to an equivalent pure-Python implementation. In empirical evaluations across 100 benchmark episodes, our baseline heuristic policy cleared an average of $69.28 \pm 43.74$ pipes (84.0% success rate), while an untrained random agent failed immediately with $0.00$ pipes. Our results demonstrate how low-level systems programming languages can eliminate computational overheads in modern reinforcement learning pipelines.
+Reinforcement Learning (RL) agents often suffer from sample inefficiency and training instability when learning control policies in sparse-reward, delayed-consequence environments. In this paper, we develop a Deep Q-Network (DQN) agent capable of mastering the classic arcade game *Flappy Bird* purely from raw scalar rewards. To address experience correlation and sample inefficiency, we integrate Prioritized Experience Replay (PER), prioritizing transitions exhibiting high Temporal Difference (TD) errors. Recognizing the severe interpreter bottleneck of maintaining binary sum-trees in pure Python, we implement the core sum-tree in native Rust using PyO3 and Maturin bindings. Our native Rust sum-tree achieves a **49.04× speedup in stratified sampling** (109,955 samples/sec vs. 2,242 samples/sec) and a **105.93× speedup in priority updates** (402,763 updates/sec vs. 3,802 updates/sec) compared to an equivalent pure-Python implementation. In empirical evaluations across 100 benchmark episodes, our baseline heuristic policy cleared an average of $69.28 \pm 43.74$ pipes (84.0% success rate), while an untrained random agent failed immediately with $0.00$ pipes. Our results demonstrate how low-level systems programming languages can eliminate computational overheads in modern reinforcement learning pipelines.
 
 ---
 
@@ -120,6 +120,12 @@ We evaluated three RL variants across 3 independent random seeds (seeds 0, 1, an
 | **DQN + Rust PER** | 3 | $42.62 \pm 45.89$ | $132$ | $46.7\%$ |
 | **Double DQN + Rust PER** | 3 | $\mathbf{48.00 \pm 53.02}$ | $\mathbf{132}$ | $\mathbf{55.0\%}$ |
 
+<p align="center">
+  <img src="eval_score_curve.png" alt="Multi-Seed Evaluation Curve" width="600"/>
+  <br/>
+  <em>Figure 1: Mean evaluation score over 200,000 steps with $\pm 1$ standard deviation shaded error bands across 3 independent random seeds.</em>
+</p>
+
 The results show clear algorithmic progression:
 1. **PER Advantage:** Prioritizing high-TD-error transitions increased average final performance by $+24.4\%$ over uniform replay ($42.62$ vs. $34.27$) and elevated success rate from $41.7\%$ to $46.7\%$.
 2. **Double DQN Advantage:** Decoupling action selection from target evaluation yielded the strongest overall stability and highest success rate ($55.0\%$), achieving a mean score of $48.00$.
@@ -136,15 +142,15 @@ To validate our systems contribution, we measured sampling and update throughput
 | NumPy `random.choice(p)` | $1,777.3$ | $22,472.7$ | $0.79\times$ | $5.91\times$ |
 | **Rust `PerTree` (PyO3)** | **$109,954.7$** | **$402,763.0$** | **$49.04\times$** | **$105.93\times$** |
 
-The microbenchmark results in Table 3 reveal that:
-1. **Sampling Speedup:** Rust achieves **$197,869$ batches/sec**, outperforming pure Python ($6,585$ batches/sec) by **$30.05\times$**. NumPy's `random.choice` is slowest ($3,645$ batches/sec) due to the necessity of sampling from a full 65,536-element categorical distribution.
-2. **Update Speedup:** In pure Python, traversing the tree array incurs interpreter overhead on each of the 64 indices $\times \log_2(65,536) = 1,024$ pointer updates. Rust performs pointer arithmetic directly in contiguous memory, reaching **$1,317,886$ updates/sec** (**$117.28\times$ faster** than pure Python).
+The microbenchmark results in Table 4 reveal that:
+1. **Sampling Speedup:** Rust achieves **$109,955$ batches/sec**, outperforming pure Python ($2,242$ batches/sec) by **$49.04\times$**. NumPy's `random.choice` is slowest ($1,777$ batches/sec) due to the necessity of sampling from a full 65,536-element categorical distribution.
+2. **Update Speedup:** In pure Python, traversing the tree array incurs interpreter overhead on each of the 64 indices $\times \log_2(65,536) = 1,024$ pointer updates. Rust performs pointer arithmetic directly in contiguous memory, reaching **$402,763$ updates/sec** (**$105.93\times$ faster** than pure Python).
 
 ---
 
 ## 4. Conclusion & Future Work
 
-In this project, we designed and implemented an end-to-end Deep Q-Network for Flappy Bird, enhanced by a native Rust Prioritized Experience Replay buffer. By moving the $O(\log N)$ binary sum-tree into Rust via PyO3, we achieved speedups of **$30\times$** in sampling and **$117\times$** in priority updates over pure Python, completely removing replay buffer data structure operations from the critical training path.
+In this project, we designed and implemented an end-to-end Deep Q-Network for Flappy Bird, enhanced by a native Rust Prioritized Experience Replay buffer. By moving the $O(\log N)$ binary sum-tree into Rust via PyO3, we achieved speedups of **$49\times$** in sampling and **$106\times$** in priority updates over pure Python, completely removing replay buffer data structure operations from the critical training path.
 
 Future investigations will explore:
 1. **Dueling Q-Networks:** Decoupling state value $V(s)$ and advantage $A(s, a)$ functions.
