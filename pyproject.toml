@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flappy-rl"
+version = "0.1.0"
+description = "Flappy Bird RL with DQN and Rust Prioritized Replay Buffer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium",
+    "flappy-bird-gymnasium",
+    "torch",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "pytest",
+    "maturin",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

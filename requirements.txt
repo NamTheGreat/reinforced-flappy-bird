@@ -1,0 +1,8 @@
+gymnasium
+flappy-bird-gymnasium
+torch
+numpy
+pandas
+matplotlib
+pytest
+maturin

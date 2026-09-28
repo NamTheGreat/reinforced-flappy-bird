@@ -1,0 +1,42 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Rust build artifacts
+target/
+per_rs/target/
+
+# Pytest / Cache
+.pytest_cache/
+
+# Results / models checkpoints (keep dirs but ignore large files if desired, or track runs)
+models/*.pt
+demo/*.mp4
+demo/*.gif
+
+# Mac OS
+.DS_Store

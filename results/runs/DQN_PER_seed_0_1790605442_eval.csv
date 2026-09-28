@@ -1,0 +1,4 @@
+run_id,method,seed,step,mean_score,std_score,median_score,max_score,success_rate,wall_time
+DQN_PER_seed_0_1790605442,DQN_PER,0,1000,0.00,0.00,0.00,0,0.000,0.2
+DQN_PER_seed_0_1790605442,DQN_PER,0,2000,0.00,0.00,0.00,0,0.000,0.5
+DQN_PER_seed_0_1790605442,DQN_PER,0,2500,0.00,0.00,0.00,0,0.000,0.6
