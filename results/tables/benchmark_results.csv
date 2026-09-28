@@ -1,4 +1,4 @@
 implementation,samples_per_sec,updates_per_sec
-pure_python,6585.08,11236.84
-numpy_choice,3645.34,61482.18
-rust_pertree,197869.62,1317885.95
+pure_python,2241.97,3802.29
+numpy_choice,1777.32,22472.70
+rust_pertree,109954.68,402763.03

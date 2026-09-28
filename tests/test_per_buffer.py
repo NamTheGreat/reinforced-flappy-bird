@@ -146,20 +146,19 @@ def test_dqn_overfit_sanity_check():
     """Sanity check: Agent can overfit a tiny fixed batch to near-zero loss."""
     agent = DQNAgent(obs_dim=4, hidden_dim=64, n_actions=2, lr=1e-2)
 
-    # Fixed batch of 8 transitions
+    # Fixed batch of 8 transitions with terminal flags to test regression to fixed targets
     s = torch.randn(8, 4)
     a = torch.randint(0, 2, (8, 1))
     r = torch.randn(8, 1)
     s2 = torch.randn(8, 4)
-    d = torch.zeros(8, 1)
+    d = torch.ones(8, 1)
 
     initial_loss, _ = agent.learn(s, a, r, s2, d)
 
     # Train on this batch for 150 steps
     for _ in range(150):
         loss, _ = agent.learn(s, a, r, s2, d)
-        agent.sync_target()
 
-    # Loss should have decreased dramatically
-    assert loss < initial_loss * 0.1
-    assert loss < 0.05
+    # Loss should have decreased dramatically towards zero
+    assert loss < initial_loss * 0.05
+    assert loss < 0.01

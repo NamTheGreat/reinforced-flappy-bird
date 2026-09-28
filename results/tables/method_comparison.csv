@@ -1,4 +1,4 @@
 Method,Seeds Evaluated,Final Eval Score (Mean ± Std),Best Eval Score (Max),Success Rate (Mean)
-DQN_PER,1,0.00,0,0.0%
-DQN_Double_PER,1,0.00,0,0.0%
-DQN_UNIFORM,1,0.00,2,0.0%
+DQN_PER,3,42.62 ± 45.89,132,46.7%
+DQN_UNIFORM,3,34.27 ± 28.98,132,41.7%
+DQN_Double_PER,3,48.00 ± 53.02,132,55.0%

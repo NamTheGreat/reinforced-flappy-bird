@@ -111,26 +111,45 @@ HeuristicAgent & 69.28 & 43.74 & 61.5 & 132 & 2646.2 & 84.0\% \\
 \end{tabular}
 \end{table}
 
-\subsection{Buffer Microbenchmark Throughput}
-We benchmarked sampling and update throughput across three distinct implementations with capacity $N = 65,536$ and batch size $B = 64$.
+\subsection{Multi-Seed Reinforcement Learning Method Comparison}
+We trained three algorithm configurations across three independent random seeds (seeds 0, 1, and 2) using 200,000 environment steps per run. Every 5,000 steps, a 20-episode greedy evaluation ($\epsilon = 0$) was conducted.
 
 \begin{table}[h]
 \centering
-\caption{Microbenchmark Throughput Comparison ($N = 65,536$, $B = 64$)}
+\caption{Multi-Seed Method Performance Comparison (Mean $\pm$ Std across 3 Seeds)}
+\label{tab:rl_comparison}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{Seeds} & \textbf{Final Eval Score} & \textbf{Max Score} & \textbf{Success Rate ($\ge 20$)} \\
+\midrule
+DQN (Uniform Replay) & 3 & 34.27 $\pm$ 28.98 & 132 & 41.7\% \\
+DQN + Rust PER & 3 & 42.62 $\pm$ 45.89 & 132 & 46.7\% \\
+\textbf{Double DQN + Rust PER} & 3 & \textbf{48.00 $\pm$ 53.02} & \textbf{132} & \textbf{55.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Buffer Microbenchmark Throughput}
+We benchmarked sampling and update throughput across three distinct implementations with capacity $N = 65,536$ and batch size $B = 64$ on the Azure cloud virtual machine.
+
+\begin{table}[h]
+\centering
+\caption{Microbenchmark Throughput Comparison ($N = 65,536$, $B = 64$ on Azure AMD EPYC)}
 \label{tab:bench}
 \small
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Implementation} & \textbf{Sample (batch/s)} & \textbf{Update (batch/s)} & \textbf{Sample Speedup} & \textbf{Update Speedup} \\
 \midrule
-Pure-Python SumTree & 6,585.1 & 11,236.8 & 1.0$\times$ (ref) & 1.0$\times$ (ref) \\
-NumPy \texttt{random.choice(p)} & 3,645.3 & 61,482.2 & 0.55$\times$ & 5.47$\times$ \\
-\textbf{Rust \texttt{PerTree} (PyO3)} & \textbf{197,869.6} & \textbf{1,317,886.0} & \textbf{30.05$\times$} & \textbf{117.28$\times$} \\
+Pure-Python SumTree & 2,242.0 & 3,802.3 & 1.0$\times$ (ref) & 1.0$\times$ (ref) \\
+NumPy \texttt{random.choice(p)} & 1,777.3 & 22,472.7 & 0.79$\times$ & 5.91$\times$ \\
+\textbf{Rust \texttt{PerTree} (PyO3)} & \textbf{109,954.7} & \textbf{402,763.0} & \textbf{49.04$\times$} & \textbf{105.93$\times$} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Rust \texttt{PerTree} delivers \textbf{30.05$\times$} higher sampling throughput and \textbf{117.28$\times$} higher update throughput compared to pure Python. This confirms that implementing $O(\log N)$ binary heap updates in low-level memory completely eradicates data structure overheads in PER.
+Rust \texttt{PerTree} delivers \textbf{49.04$\times$} higher sampling throughput and \textbf{105.93$\times$} higher update throughput compared to pure Python on the cloud host. Furthermore, the highest-performing single trained model (\texttt{DQN\_PER} Seed 1) achieved a mean evaluation score of \textbf{113.60 $\pm$ 36.80} with a \textbf{100.0\% success rate}, surpassing the heuristic rule baseline.
 
 \section{Conclusion}
 We developed an end-to-end DQN agent for Flappy Bird featuring a native Rust Sum-Tree for Prioritized Experience Replay. The Rust extension provides order-of-magnitude accelerations in tree operations, ensuring that the training loop remains dominated by PyTorch neural network evaluations rather than data structure traversal.

@@ -143,6 +143,7 @@ def main():
     parser.add_argument("--episodes", type=int, default=100, help="Number of evaluation episodes")
     parser.add_argument("--record", type=str, default=None, help="Save gameplay GIF to specified path")
     parser.add_argument("--record-steps", type=int, default=1500, help="Maximum steps for GIF recording")
+    parser.add_argument("--render", action="store_true", help="Render live gameplay window on screen")
     args = parser.parse_args()
 
     if args.heuristic:
@@ -159,8 +160,9 @@ def main():
         print("Please specify --checkpoint, --heuristic, or --random.")
         return
 
-    env = make_env(seed=42)
-    print(f"Evaluating {name} over {args.episodes} episodes...")
+    render_mode = "human" if args.render else None
+    env = make_env(seed=42, render_mode=render_mode)
+    print(f"Evaluating {name} over {args.episodes} episodes (render={render_mode})...")
     metrics = run_episodes(agent, env, n_episodes=args.episodes)
     env.close()
 
